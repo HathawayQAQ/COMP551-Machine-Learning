@@ -6,41 +6,31 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
 
-# Load and preprocess data
-infrared_thermography_temperature = fetch_ucirepo(id=925) 
-X = infrared_thermography_temperature.data.features 
-y = infrared_thermography_temperature.data.targets 
+# Data acquisition
+infrared_thermography_temperature = fetch_ucirepo(id=925)
+X = infrared_thermography_temperature.data.features
+y = infrared_thermography_temperature.data.targets
 
-# df_x = pd.DataFrame(X)
-# df_y = pd.DataFrame(y)
-# df = pd.concat([df_x, df_y], axis=1)
-# df = df.dropna()
-
-# x = df.drop(['Gender', 'Ethnicity', 'Age', 'aveOralF', 'aveOralM'], axis=1)
-# y = df['aveOralM']
-
-# x_dummies = pd.get_dummies(df, columns=['Age', 'Gender', 'Ethnicity'], drop_first=False)
-# x_dummies = x_dummies.drop(['aveOralF', 'aveOralM'], axis=1)
+# One-hot encoding
 x_dummies = pd.get_dummies(X, columns=['Age', 'Gender', 'Ethnicity'], drop_first=True)
-print(x_dummies)
-x_drop = X.drop(['Age', 'Gender', 'Ethnicity'], axis=1)
-
 bool_columns = x_dummies.select_dtypes(include=['bool']).columns
 for col in bool_columns:
     x_dummies[col] = x_dummies[col].astype(int)
 
+# Handling missing values
 nan_rows = x_dummies.isnull().any(axis=1)
-x_dummies= x_dummies[~nan_rows]
-print("NaN values in x_dummies: ", x_dummies.isnull().any().any())
-# x_dummies.to_csv('datadummies.csv',index =False)
-# print(x_dummies) # [1020 rows x 43 columns]
-y = y['aveOralM']
-y= y[~nan_rows]
+x_dummies = x_dummies[~nan_rows]
 
+# Selecting the target variable
+y = y['aveOralM']
+y = y[~nan_rows]
+
+# Feature scaling
 scaler = StandardScaler()
 x_scaled = scaler.fit_transform(x_dummies)
 
-x_train, x_test, y_train, y_test = train_test_split(x_scaled, y, test_size=0.2, random_state=42)
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Linear Regression
 class LinearRegression:
