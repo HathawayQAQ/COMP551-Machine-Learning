@@ -11,26 +11,31 @@ infrared_thermography_temperature = fetch_ucirepo(id=925)
 X = infrared_thermography_temperature.data.features
 y = infrared_thermography_temperature.data.targets
 
-# One-hot encoding
-x_dummies = pd.get_dummies(X, columns=['Age', 'Gender', 'Ethnicity'], drop_first=True)
-bool_columns = x_dummies.select_dtypes(include=['bool']).columns
+# Handle missing values
+nan_rows = X.isnull().any(axis=1)
+X_clean = X[~nan_rows]
+y_clean = y[~nan_rows]
+
+# Handle categorical features
+categorical_columns = ['Age', 'Gender', 'Ethnicity']
+X_dummies = pd.get_dummies(X_clean, columns=categorical_columns, drop_first=True)
+
+# Convert boolean columns to integer
+bool_columns = X_dummies.select_dtypes(include=['bool']).columns
 for col in bool_columns:
-    x_dummies[col] = x_dummies[col].astype(int)
+    X_dummies[col] = X_dummies[col].astype(int)
 
-# Handling missing values
-nan_rows = x_dummies.isnull().any(axis=1)
-x_dummies = x_dummies[~nan_rows]
-
-# Selecting the target variable
-y = y['aveOralM']
-y = y[~nan_rows]
-
-# Feature scaling
+# Scale features
 scaler = StandardScaler()
-x_scaled = scaler.fit_transform(x_dummies)
+X_scaled = scaler.fit_transform(X_dummies)
+
+# Select the target variable
+y_final = y_clean['aveOralM']
+
+# X_scaled and y_final are now ready for model training
 
 # Train-test split
-x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_final, test_size=0.2, random_state=42)
 
 # Linear Regression
 class LinearRegression:
@@ -79,10 +84,10 @@ class SGDLinearRegression:
 
 # Experiment 1: Report performance of linear regression
 model = LinearRegression()
-model.fit(x_train, y_train)
+model.fit(X_train, y_train)
 
-y_train_pred = model.predict(x_train)
-y_test_pred = model.predict(x_test)
+y_train_pred = model.predict(X_train)
+y_test_pred = model.predict(X_test)
 print(y_test_pred)
 
 train_mse = mean_squared_error(y_train, y_train_pred)
@@ -111,7 +116,7 @@ print(f"MAE (Test): {mae_test:.4f}")
 
 # Experiment 2: Report weights of features
 feature_importance = pd.DataFrame({
-    'Feature': x_dummies.columns,
+    'Feature': X_dummies.columns,
     'Coefficient': model.coefficients
 })
 feature_importance['Abs_Coefficient'] = abs(feature_importance['Coefficient'])
@@ -126,12 +131,12 @@ train_scores = []
 test_scores = []
 
 for size in train_sizes:
-    x_train_subset, _, y_train_subset, _ = train_test_split(x_train, y_train, train_size=size, random_state=42)
+    x_train_subset, _, y_train_subset, _ = train_test_split(X_train, y_train, train_size=size, random_state=42)
     model = LinearRegression()
     model.fit(x_train_subset, y_train_subset)
     
     train_pred = model.predict(x_train_subset)
-    test_pred = model.predict(x_test)
+    test_pred = model.predict(X_test)
     
     train_scores.append(r2_score(y_train_subset, train_pred))
     test_scores.append(r2_score(y_test, test_pred))
@@ -157,8 +162,8 @@ def safe_r2_score(y_true, y_pred):
     
 for batch_size in batch_sizes:
     model = SGDLinearRegression(batch_size=batch_size)
-    model.fit(x_train, y_train)
-    y_pred = model.predict(x_test)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
     score = safe_r2_score(y_test, y_pred)
     batch_scores.append(score)
     print(f"Batch size {batch_size}: Test R2= {score:.4f}")
@@ -181,8 +186,8 @@ lr_scores = []
 
 for lr in learning_rates:
     model = SGDLinearRegression(learning_rate=lr)
-    model.fit(x_train, y_train)
-    y_pred = model.predict(x_test)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
     score = safe_r2_score(y_test, y_pred)
     lr_scores.append(score)
     print(f"Learning rate {lr}: Test R-squared = {score:.4f}")
@@ -193,13 +198,13 @@ for lr, score in zip(learning_rates, lr_scores):
 
 # Experiment 6: Compare analytical solution with mini-batch SGD
 analytical_model = LinearRegression()
-analytical_model.fit(x_train, y_train)
-analytical_pred = analytical_model.predict(x_test)
+analytical_model.fit(X_train, y_train)
+analytical_pred = analytical_model.predict(X_test)
 analytical_score = r2_score(y_test, analytical_pred)
 
 sgd_model = SGDLinearRegression()
-sgd_model.fit(x_train, y_train)
-sgd_pred = sgd_model.predict(x_test)
+sgd_model.fit(X_train, y_train)
+sgd_pred = sgd_model.predict(X_test)
 sgd_score = r2_score(y_test, sgd_pred)
 
 print("\nExperiment 6: Analytical vs SGD Performance")
