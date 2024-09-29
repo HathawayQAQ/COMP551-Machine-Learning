@@ -151,7 +151,6 @@ plt.legend()
 plt.show()
 
 # Experiment 4: Try different mini-batch sizes
-# The SGDLinearRegression class is assumed to be defined as provided
 
 def minibatch_iteration(X, y, max_iters=200):
     N = X.shape[0]
