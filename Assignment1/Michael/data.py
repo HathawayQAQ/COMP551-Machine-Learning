@@ -151,62 +151,152 @@ plt.legend()
 plt.show()
 
 # Experiment 4: Try different mini-batch sizes
-batch_sizes = [8, 16, 32, 64, 128]
-batch_scores = []
+# The SGDLinearRegression class is assumed to be defined as provided
 
-def safe_r2_score(y_true, y_pred):
-    try:
-        return r2_score(y_true, y_pred)
-    except ValueError:
-        return float('-inf')
-    
-for batch_size in batch_sizes:
-    model = SGDLinearRegression(batch_size=batch_size)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    score = safe_r2_score(y_test, y_pred)
-    batch_scores.append(score)
-    print(f"Batch size {batch_size}: Test R2= {score:.4f}")
+def minibatch_iteration(X, y, max_iters=200):
+    N = X.shape[0]
+    batch_size = 2**3
+    loss_histories = []
 
-plt.figure(figsize=(10, 6))
-plt.plot(batch_sizes, batch_scores, marker='o')
-plt.xlabel('Batch Size')
-plt.ylabel('Test R2 Score')
-plt.title('Effect of Batch Size on Model Performance')
-plt.xscale('log')
+    for _ in range(5):
+        model = SGDLinearRegression()
+        losses = []
+        for iteration in range(max_iters):
+            model.fit(X, y, max_iterations=1, learning_rate=5e-2, batch_size=batch_size)
+            _, loss = model.linear_loss(np.column_stack([np.ones(N), X]), y)
+            losses.append(loss)
+
+        loss_histories.append(losses)
+        batch_size *= 2
+
+    return loss_histories
+
+loss_histories = minibatch_iteration(X_train, y_train)
+
+# Plotting
+fig, axes = plt.subplots(3, 2, figsize=(12, 6))
+batch_sizes = [2**i for i in range(3, 8)]  # List of batch sizes
+k = 0
+
+for i in range(3):
+    for j in range(2):
+        if k < len(loss_histories):
+            loss_history = np.array(loss_histories[k]).reshape(-1, 20).mean(1)
+            axes[i, j].plot(loss_history)
+            axes[i, j].set(xlabel="Iterations (x20)", ylabel="Average Loss",
+                           title=f"Batch Size: {batch_sizes[k]}")
+            axes[i, j].set_yscale('log')
+            k += 1
+        else:
+            fig.delaxes(axes[i, j])
+
+fig.tight_layout()
 plt.show()
 
-print("\nExperiment 4: Mini-batch Size Performance")
-for batch_size, score in zip(batch_sizes, batch_scores):
-    print(f"Batch size {batch_size}: Test R2 = {score:.4f}")
+# Print summary statistics
+print("Summary of Mini-batch Size Influence on SGD Linear Regression Loss:")
+for batch_size, losses in zip(batch_sizes, loss_histories):
+    print(f"Batch size: {batch_size}")
+    print(f"  Final loss: {losses[-1]:.6f}")
+    print(f"  Mean loss: {np.mean(losses):.6f}")
+    print(f"  Min loss: {np.min(losses):.6f}")
+    print()
 
 # Experiment 5: Try different learning rates
-learning_rates = [0.001, 0.01, 0.1]
-lr_scores = []
+def learning_rate_experiment(X, y, learning_rates, max_iters=200, batch_size=32):
+    loss_histories = []
 
-for lr in learning_rates:
-    model = SGDLinearRegression(learning_rate=lr)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    score = safe_r2_score(y_test, y_pred)
-    lr_scores.append(score)
-    print(f"Learning rate {lr}: Test R-squared = {score:.4f}")
+    for lr in learning_rates:
+        model = SGDLinearRegression()
+        losses = []
 
-print("\nExperiment 5: Learning Rate Performance")
-for lr, score in zip(learning_rates, lr_scores):
-    print(f"Learning rate {lr}: Test R-squared = {score:.4f}")
+        for iteration in range(max_iters):
+            model.fit(X, y, max_iterations=1, learning_rate=lr, batch_size=batch_size)
+            _, loss = model.linear_loss(np.column_stack([np.ones(X.shape[0]), X]), y)
+            losses.append(loss)
+
+        loss_histories.append(losses)
+
+    return loss_histories
+
+# Experiment parameters
+learning_rates = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
+max_iterations = 1500
+batch_size = 32
+
+# Run the experiment
+loss_histories = learning_rate_experiment(X_train, y_train, learning_rates, max_iterations, batch_size)
+
+# Plotting
+fig, axs = plt.subplots(1, len(learning_rates), figsize=(15, 5))
+
+for i, learning_rate in enumerate(learning_rates):
+    axs[i].plot(np.array(loss_history).reshape(-1, 200).mean(1))
+    axs[i].set_title(f"Learning Rate = {learning_rate}")
+    axs[i].set_xlabel("Iteration")
+    axs[i].set_ylabel("Training loss")
+    axs[i].grid(linestyle='--', linewidth=0.5)
+
+plt.show()
+
+# Print summary statistics
+print("\nSummary of Learning Rate Influence on SGD Linear Regression Loss:")
+for lr, losses in zip(learning_rates, loss_histories):
+    print(f"Learning Rate: {lr}")
+    print(f"  Min loss: {np.min(losses):.6f}")
+    print()
 
 # Experiment 6: Compare analytical solution with mini-batch SGD
-analytical_model = LinearRegression()
-analytical_model.fit(X_train, y_train)
-analytical_pred = analytical_model.predict(X_test)
-analytical_score = r2_score(y_test, analytical_pred)
 
-sgd_model = SGDLinearRegression()
-sgd_model.fit(X_train, y_train)
-sgd_pred = sgd_model.predict(X_test)
-sgd_score = r2_score(y_test, sgd_pred)
+def cross_validation_experiment(X_train, y_train, X_test, y_test):
+    num_folds = 5
+    X_train_folds = np.array_split(X_train, num_folds)
+    y_train_folds = np.array_split(y_train, num_folds)
+    results = {}
+    best_val = np.inf
+    best_lr = None
+    best_model = None
+    learning_rates = np.linspace(1e-2, 1e-5, 20)
 
-print("\nExperiment 6: Analytical vs SGD Performance")
-print(f"Analytical solution: Test R-squared = {analytical_score:.4f}")
-print(f"Mini-batch SGD: Test R-squared = {sgd_score:.4f}")
+    for lr in learning_rates:
+        val_mse_avg = 0
+        for i in range(num_folds):
+            X_train_temp = np.concatenate([X_train_folds[j] for j in range(num_folds) if j != i])
+            y_train_temp = np.concatenate([y_train_folds[j] for j in range(num_folds) if j != i])
+
+            model = SGDLinearRegression()
+            model.fit(X_train_temp, y_train_temp, max_iterations=500, learning_rate=lr, verbose=False)
+
+            y_train_pred = model.predict(X_train_temp)
+            y_val_pred = model.predict(X_train_folds[i])
+            y_test_pred = model.predict(X_test)
+
+            train_mse = np.mean((y_train_temp - y_train_pred) ** 2)
+            val_mse = np.mean((y_train_folds[i] - y_val_pred) ** 2)
+            test_mse = np.mean((y_test - y_test_pred) ** 2)
+
+            results[(lr, i)] = (train_mse, val_mse, test_mse)
+            val_mse_avg += val_mse
+
+        val_mse_avg /= num_folds
+        if val_mse_avg < best_val:
+            best_val = val_mse_avg
+            best_lr = lr
+            best_model = model
+
+    # Print out results
+    for lr, i in sorted(results):
+        train_mse, val_mse, test_mse = results[(lr, i)]
+        print(f'lr {lr:.6e} train MSE: {train_mse:.6f} val MSE: {val_mse:.6f} test MSE: {test_mse:.6f}')
+
+    print(f'Best average validation mean squared error achieved during cross-validation: {best_val:.6f}, with learning rate {best_lr:.6e}')
+
+    return best_model, best_lr
+
+# Assuming X_train, y_train, X_test, y_test are your data
+best_model, best_lr = cross_validation_experiment(X_train, y_train, X_test, y_test)
+
+# Use the best model to make predictions on the test set
+y_test_pred = best_model.predict(X_test)
+final_test_mse = np.mean((y_test - y_test_pred) ** 2)
+print(f'Final Test MSE with best model: {final_test_mse:.6f}')
