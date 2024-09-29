@@ -158,6 +158,7 @@ def minibatch_iteration(X, y, max_iters=200):
     batch_size = 2**3
     loss_histories = []
 
+    # Mini-batch iterations
     for _ in range(5):
         model = SGDLinearRegression()
         losses = []
@@ -165,17 +166,29 @@ def minibatch_iteration(X, y, max_iters=200):
             model.fit(X, y, max_iterations=1, learning_rate=5e-2, batch_size=batch_size)
             _, loss = model.linear_loss(np.column_stack([np.ones(N), X]), y)
             losses.append(loss)
-
         loss_histories.append(losses)
         batch_size *= 2
 
+    # Fully batched baseline (batch_size = N)
+    model_fully_batched = SGDLinearRegression()
+    full_batch_losses = []
+    for iteration in range(max_iters):
+        model_fully_batched.fit(X, y, max_iterations=1, learning_rate=5e-2, batch_size=N)
+        _, loss = model_fully_batched.linear_loss(np.column_stack([np.ones(N), X]), y)
+        full_batch_losses.append(loss)
+    
+    loss_histories.append(full_batch_losses)
+    
     return loss_histories
 
+# Running the experiment
 loss_histories = minibatch_iteration(X_train, y_train)
+
+# Adding the fully batched baseline
+batch_sizes = [2**i for i in range(3, 8)] + [X_train.shape[0]]  # List of batch sizes + full batch
 
 # Plotting
 fig, axes = plt.subplots(3, 2, figsize=(12, 6))
-batch_sizes = [2**i for i in range(3, 8)]  # List of batch sizes
 k = 0
 
 for i in range(3):
@@ -183,8 +196,12 @@ for i in range(3):
         if k < len(loss_histories):
             loss_history = np.array(loss_histories[k]).reshape(-1, 20).mean(1)
             axes[i, j].plot(loss_history)
+            if batch_sizes[k] == X_train.shape[0]:
+                title = f"Fully Batched (Batch Size: {batch_sizes[k]})"
+            else:
+                title = f"Batch Size: {batch_sizes[k]}"
             axes[i, j].set(xlabel="Iterations (x20)", ylabel="Average Loss",
-                           title=f"Batch Size: {batch_sizes[k]}")
+                           title=title)
             axes[i, j].set_yscale('log')
             k += 1
         else:
