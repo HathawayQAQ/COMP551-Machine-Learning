@@ -83,27 +83,55 @@ class SGDLinearRegression:
         return X.dot(self.coefficients) + self.intercept
 
 # Experiment 1: Report performance of linear regression
-model = LinearRegression()
-model.fit(X_train, y_train)
+# Linear Regression Model
+linear_model = LinearRegressionModel()
+linear_model.fit(X_train, y_train)
 
-y_train_pred = model.predict(X_train)
-y_test_pred = model.predict(X_test)
-print(y_test_pred)
+y_train_pred = linear_model.predict(X_train)
+y_test_pred = linear_model.predict(X_test)
 
 train_mse = mean_squared_error(y_train, y_train_pred)
 test_mse = mean_squared_error(y_test, y_test_pred)
 train_r2 = r2_score(y_train, y_train_pred)
 test_r2 = r2_score(y_test, y_test_pred)
-mae_train = mean_absolute_error(y_train, y_train_pred)
-mae_test = mean_absolute_error(y_test, y_test_pred)
+train_mae = mean_absolute_error(y_train, y_train_pred)
+test_mae = mean_absolute_error(y_test, y_test_pred)
 
-print("Experiment 1: Linear Regression Performance")
+print("Linear Regression Performance")
 print(f"Training MSE: {train_mse:.4f}")
 print(f"Test MSE: {test_mse:.4f}")
-print(f"Training R-squared: {train_r2:.4f}")
-print(f"Test R-squared: {test_r2:.4f}")
-print(f"MAE (Train): {mae_train:.4f}")
-print(f"MAE (Test): {mae_test:.4f}")
+print(f"Training R²: {train_r2:.4f}")
+print(f"Test R²: {test_r2:.4f}")
+print(f"Training MAE: {train_mae:.4f}")
+print(f"Test MAE: {test_mae:.4f}")
+
+
+# Logistic Regression Model
+logistic_model = LogisticRegressionModel()
+logistic_model.fit(X2_train, y2_train)
+
+y2_train_pred = logistic_model.predict(X2_train)
+y2_test_pred = logistic_model.predict(X2_test)
+
+train_accuracy = accuracy_score(y2_train, y2_train_pred)
+test_accuracy = accuracy_score(y2_test, y2_test_pred)
+train_precision = precision_score(y2_train, y2_train_pred)
+test_precision = precision_score(y2_test, y2_test_pred)
+train_recall = recall_score(y2_train, y2_train_pred)
+test_recall = recall_score(y2_test, y2_test_pred)
+train_f1 = f1_score(y2_train, y2_train_pred)
+test_f1 = f1_score(y2_test, y2_test_pred)
+
+print()
+print("Logistic Regression Performance")
+print(f"Training Accuracy: {train_accuracy:.4f}")
+print(f"Test Accuracy: {test_accuracy:.4f}")
+print(f"Training Precision: {train_precision:.4f}")
+print(f"Test Precision: {test_precision:.4f}")
+print(f"Training Recall: {train_recall:.4f}")
+print(f"Test Recall: {test_recall:.4f}")
+print(f"Training F-1 score: {train_f1:.4f}")
+print(f"Test F-1 score: {test_f1:.4f}")
 
 
 # model2 = LinearRegression()
